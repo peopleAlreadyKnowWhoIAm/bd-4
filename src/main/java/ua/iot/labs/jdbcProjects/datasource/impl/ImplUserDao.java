@@ -1,13 +1,13 @@
 package ua.iot.labs.jdbcProjects.datasource.impl;
 
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -47,25 +47,25 @@ public class ImplUserDao implements UserDao {
 
     List<Integer> getAllSongsById(Integer id) throws DataAccessException {
         List<Integer> out;
-        out = jdbc.query(FIND_SONGS, BeanPropertyRowMapper.newInstance(Integer.class), id);
+        out = jdbc.queryForList(FIND_SONGS, Integer.class, id);
         return out;
     }
 
     List<Integer> getAllAlbumsById(Integer id) throws DataAccessException {
         List<Integer> out;
-        out = jdbc.query(FIND_ALBUMS, BeanPropertyRowMapper.newInstance(Integer.class), id);
+        out = jdbc.queryForList(FIND_ALBUMS, Integer.class, id);
         return out;
     }
 
     List<Integer> getAllGenresById(Integer id) throws DataAccessException {
         List<Integer> out;
-        out = jdbc.query(FIND_GENRES, BeanPropertyRowMapper.newInstance(Integer.class), id);
+        out = jdbc.queryForList(FIND_GENRES,Integer.class, id);
         return out;
     }
 
     List<Integer> getAllPlaylistsById(Integer id) throws DataAccessException {
         List<Integer> out;
-        out = jdbc.query(FIND_PLAYLISTS, BeanPropertyRowMapper.newInstance(Integer.class), id);
+        out = jdbc.queryForList(FIND_PLAYLISTS,Integer.class, id);
         return out;
     }
 
@@ -138,7 +138,7 @@ public class ImplUserDao implements UserDao {
 
             jdbc.update((connection) -> {
                 PreparedStatement ps = connection
-                        .prepareStatement(CREATE);
+                        .prepareStatement(CREATE, Statement.RETURN_GENERATED_KEYS);
                 ps.setString(1, obj.getName());
                 ps.setString(2, obj.getEmail());
                 return ps;
@@ -155,7 +155,7 @@ public class ImplUserDao implements UserDao {
             }
 
             InsertAlbums(id, obj.getAlbums());
-            InsertGenres(id, obj.getPrefered_genres());
+            InsertGenres(id, obj.getPreferedGenres());
             InsertSongs(id, obj.getSongs());
 
         } catch (DataAccessException e) {
@@ -195,7 +195,7 @@ public class ImplUserDao implements UserDao {
             jdbc.update(DELETE_SONGS, obj.getId());
             jdbc.update(DELETE_GENRES, obj.getId());
             InsertAlbums(obj.getId(), obj.getAlbums());
-            InsertGenres(obj.getId(), obj.getPrefered_genres());
+            InsertGenres(obj.getId(), obj.getPreferedGenres());
             InsertSongs(obj.getId(), obj.getSongs());
         } catch (DataAccessException e) {
             System.out.println("Error in data access: " + e.getMessage());
@@ -215,7 +215,7 @@ public class ImplUserDao implements UserDao {
     }
 
     @Override
-    public Optional<User> finduserByEmail(String email) {
+    public Optional<User> findUserByEmail(String email) {
         Optional<User> out;
         try {
             val outData = jdbc.queryForMap(FIND_BY_EMAIL, email);

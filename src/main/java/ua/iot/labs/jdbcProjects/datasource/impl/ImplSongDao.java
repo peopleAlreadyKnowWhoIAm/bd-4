@@ -1,13 +1,15 @@
 package ua.iot.labs.jdbcProjects.datasource.impl;
 
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
+import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -27,15 +29,15 @@ public class ImplSongDao implements SongDao {
     static final String FIND_BY_NAME = "SELECT * FROM song where name = ?";
     static final String FIND_BY_GENRE = "SELECT * FROM song where genre_id = ?";
     static final String FIND_AUTHORS = "SELECT author_id from song_has_author where song_id = ?";
-    static final String FIND_COMMERCIAL = "SELECT * from song_commecial where song_id = ?";
+    static final String FIND_COMMERCIAL = "SELECT * from song_commercial where song_id = ?";
 
     static final String CREATE = "INSERT INTO song(name, length, album_id, genre_id) VALUES (?, ?, ?,?)";
     static final String CREATE_AUTHORS = "INSERT INTO song_has_author(song_id, author_id) VALUES (?, ?)";
-    static final String CREATE_COMMERCIAL = "INSERT INTO song_commercial(song_id, price, num_of_downloads) VALUES ?, ?, ?";
+    static final String CREATE_COMMERCIAL = "INSERT INTO song_commercial(song_id, price, num_of_downloads) VALUES (?, ?, ?)";
 
     static final String UPDATE = "UPDATE song SET name=?, length=?, album_id=?, genre_id=? where id = ?";
     static final String UPDATE_COMMERCIAL = "UPDATE song_commercial SET price=?, num_of_downloads=? where song_id = ?";
-    static final String DELETE_AUTHORS = "DELETE from song_has_authors where song_id = ?";
+    static final String DELETE_AUTHORS = "DELETE from song_has_author where song_id = ?";
 
     static final String DELETE = "DELETE FROM song WHERE id=?";
 
@@ -43,7 +45,7 @@ public class ImplSongDao implements SongDao {
 
     List<Integer> getAllAuthorsById(Integer id) throws DataAccessException {
         List<Integer> out;
-        out = jdbc.query(FIND_AUTHORS, BeanPropertyRowMapper.newInstance(Integer.class), id);
+        out = jdbc.queryForList(FIND_AUTHORS, id).stream().map((val) -> (Integer) val.get("author_id")).toList();
         return out;
     }
 
@@ -51,11 +53,12 @@ public class ImplSongDao implements SongDao {
         Integer id = (Integer) data.get("id");
         val authors = getAllAuthorsById(id);
         Map<String, Object> commercial;
+        System.out.println(id);
         commercial = jdbc.queryForMap(FIND_COMMERCIAL, id);
 
         return new Song(id, (String) data.get("name"), (Integer) data.get("length"), authors,
                 Optional.ofNullable((Integer) data.get("album_id")), (Integer) data.get("genre_id"),
-                (Double) commercial.get("price"),
+                (BigDecimal) commercial.get("price"),
                 (Integer) commercial.get("num_of_downloads"));
     }
 
@@ -117,11 +120,16 @@ public class ImplSongDao implements SongDao {
             KeyHolder keyHolder = new GeneratedKeyHolder();
 
             jdbc.update((connection) -> {
+
                 PreparedStatement ps = connection
-                        .prepareStatement(CREATE);
+                        .prepareStatement(CREATE, Statement.RETURN_GENERATED_KEYS);
                 ps.setString(1, obj.getName());
                 ps.setInt(2, obj.getLength());
-                ps.setInt(3, obj.getAlbum().get());
+                if (obj.getAlbum().isPresent()) {
+                    ps.setInt(3, obj.getAlbum().get());
+                } else {
+                    ps.setNull(3, Types.INTEGER);
+                }
                 ps.setInt(4, obj.getGenre());
                 return ps;
             }, keyHolder);
@@ -136,7 +144,7 @@ public class ImplSongDao implements SongDao {
                 throw exc;
             }
             InsertAuthors(id, obj.getAuthors());
-            jdbc.queryForMap(CREATE_COMMERCIAL, id, obj.getPrice(), obj.getNumberOfDownloads());
+            jdbc.update(CREATE_COMMERCIAL, id, obj.getPrice(), obj.getNumberOfDownloads());
 
         } catch (DataAccessException e) {
             System.out.println("Error in data access: " + e.getMessage());
@@ -156,8 +164,19 @@ public class ImplSongDao implements SongDao {
     public int update(Song obj) {
         int out = 0;
         try {
-            out = jdbc.update(UPDATE, obj.getName(), obj.getLength(), obj.getAlbum().get(), obj.getGenre(),
-                    obj.getId());
+            jdbc.update((conection) -> {
+                PreparedStatement ps = conection.prepareStatement(UPDATE);
+                ps.setString(1, obj.getName());
+                ps.setInt(2, obj.getLength());
+                if (obj.getAlbum().isPresent()) {
+                    ps.setInt(3, obj.getAlbum().get());
+                } else {
+                    ps.setNull(3, Types.INTEGER);
+                }
+                ps.setInt(4, obj.getGenre());
+                ps.setInt(5, obj.getId());
+                return ps;
+            });
             jdbc.update(UPDATE_COMMERCIAL, obj.getPrice(), obj.getNumberOfDownloads(), obj.getId());
             jdbc.update(DELETE_AUTHORS, obj.getId());
             InsertAuthors(obj.getId(), obj.getAuthors());
@@ -179,7 +198,7 @@ public class ImplSongDao implements SongDao {
     }
 
     @Override
-    public List<Song> getSongsByGenreId(Integer id) {
+    public List<Song> findSongsByGenreId(Integer id) {
         List<Song> out;
         try {
             val outData = jdbc.queryForList(FIND_BY_GENRE, id);

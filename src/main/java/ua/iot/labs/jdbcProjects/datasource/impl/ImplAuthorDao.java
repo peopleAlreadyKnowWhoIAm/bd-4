@@ -1,6 +1,7 @@
 package ua.iot.labs.jdbcProjects.datasource.impl;
 
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -99,7 +100,7 @@ public class ImplAuthorDao implements AuthorDao {
 
             jdbc.update((connection) -> {
                 PreparedStatement ps = connection
-                        .prepareStatement(CREATE);
+                        .prepareStatement(CREATE, Statement.RETURN_GENERATED_KEYS);
                 ps.setString(1, obj.getName());
                 return ps;
             }, keyHolder);

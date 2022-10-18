@@ -1,13 +1,13 @@
 package ua.iot.labs.jdbcProjects.datasource.impl;
 
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -25,26 +25,21 @@ public class ImplGenreDao implements GenreDao {
     static final String FIND_ALL = "SELECT * FROM genre";
     static final String FIND_BY_ID = "SELECT * FROM genre where id = ?";
     static final String FIND_BY_NAME = "SELECT * FROM genre where name = ?";
-    static final String FIND_RELETED = "SELECT releted_genre_id from related_genres where genre_id = ?";
+    static final String FIND_RELETED = "SELECT related_genre_id from related_genres where genre_id = ?";
 
-    static final String CREATE = "INSERT INTO album(name, year_of_publishing,label_id) VALUES (?, ?, ?)";
-    static final String CREATE_RELETED = "INSERT INTO related_genres(genre_id, releted_genre_id) VALUES(?, ?)";
+    static final String CREATE = "INSERT INTO genre(name) VALUES (?)";
+    static final String CREATE_RELETED = "INSERT INTO related_genres(genre_id, related_genre_id) VALUES(?, ?)";
 
     static final String UPDATE = "UPDATE genre SET name=? where id=?";
     static final String DELETE_RELETED = "DELETE from related_genres where genre_id = ?";
 
-    static final String DELETE = "DELETE FROM album WHERE id=?";
+    static final String DELETE = "DELETE FROM genre WHERE id=?";
 
-    
     final JdbcTemplate jdbc;
 
-    List<Integer> getAllRelatedById(Integer id) {
+    List<Integer> getAllRelatedById(Integer id) throws DataAccessException {
         List<Integer> out;
-        try {
-            out = jdbc.query(FIND_RELETED, BeanPropertyRowMapper.newInstance(Integer.class), id);
-        } catch (Exception e) {
-            out = new ArrayList<>();
-        }
+        out = jdbc.queryForList(FIND_RELETED,Integer.class, id);
         return out;
     }
 
@@ -114,7 +109,7 @@ public class ImplGenreDao implements GenreDao {
 
             jdbc.update((connection) -> {
                 PreparedStatement ps = connection
-                        .prepareStatement(CREATE);
+                        .prepareStatement(CREATE, Statement.RETURN_GENERATED_KEYS);
                 ps.setString(1, obj.getName());
                 return ps;
             }, keyHolder);
@@ -123,7 +118,8 @@ public class ImplGenreDao implements GenreDao {
             if (bufId != null) {
                 id = bufId.intValue();
             } else {
-                val exc = new DataAccessException("Error!! Id from creating is null"){};
+                val exc = new DataAccessException("Error!! Id from creating is null") {
+                };
                 throw exc;
             }
 
