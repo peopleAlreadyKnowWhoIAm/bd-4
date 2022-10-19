@@ -1,3 +1,3 @@
-# Laba 3
+# Laba 4
 
 Make database-client using JDBC and command line.
