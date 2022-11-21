@@ -45,7 +45,7 @@ public class ImplSongDao implements SongDao {
 
     List<Integer> getAllAuthorsById(Integer id) throws DataAccessException {
         List<Integer> out;
-        out = jdbc.queryForList(FIND_AUTHORS, id).stream().map((val) -> (Integer) val.get("author_id")).toList();
+        out = jdbc.queryForList(FIND_AUTHORS, Integer.class, id);
         return out;
     }
 
